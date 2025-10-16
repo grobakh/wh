@@ -67,31 +67,22 @@
             position:relative; width:100%; height:100%; border-radius:50%;
             background:
                     conic-gradient(var(--accent) var(--p), var(--track) 0deg);
-            mask: radial-gradient(calc(50% - var(--ring-size)) circle, transparent 99%, #000 100%);
             transition: background .35s cubic-bezier(.22,1,.36,1);
         }
 
         .ring::after{
             content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none;
             background:
-                    repeating-conic-gradient(from -90deg,
-                    rgba(255,255,255,.14) 0 1deg,
-                    transparent 1deg 7.5deg
-                    );
-            radial-gradient(50% circle, #000 98%, transparent 100%);
+                repeating-conic-gradient(from -90deg,
+                rgba(255,255,255,.5) 0 1deg,
+                transparent 1deg 30deg
+                ),
+                repeating-conic-gradient(from -90deg,
+                rgba(255,255,255,.12) 0 1deg,
+                transparent 1deg 7.5deg
+                );
             opacity:.35;
         }
-
-        .quarter-dot{ position:absolute; left:50%; top:50%; width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.9); transform-origin: 50% calc(100% - 6px); box-shadow:0 0 0 2px rgba(0,0,0,.25); }
-        .qd25{ transform: translate(-50%,-50%) rotate(0deg) translateY(calc(-50% + 6px)); }
-        .qd50{ transform: translate(-50%,-50%) rotate(90deg) translateY(calc(-50% + 6px)); }
-        .qd75{ transform: translate(-50%,-50%) rotate(180deg) translateY(calc(-50% + 6px)); }
-        .quarter-label{ position:absolute; left:50%; top:50%; transform-origin:center; color:var(--muted); font-weight:700; font-size:.8rem }
-        .ql25{ transform: translate(-50%,-50%) rotate(0deg) translateY(calc(-50% - 18px)); }
-        .ql50{ transform: translate(-50%,-50%) rotate(90deg) translateY(calc(-50% - 18px)); }
-        .ql75{ transform: translate(-50%,-50%) rotate(180deg) translateY(calc(-50% - 18px)); }
-
-        .time-dot{ position:absolute; left:50%; top:50%; width:12px; height:12px; border-radius:50%; background:var(--accent-2); box-shadow:0 0 0 3px color-mix(in oklab, var(--accent-2) 30%, transparent), 0 2px 8px rgba(0,0,0,.45); transform-origin: 50% calc(100% - 6px); }
 
         .center-badge{
             position:absolute; inset: calc(50% - 54px) auto auto calc(50% - 54px);
@@ -150,7 +141,7 @@
         input[type="time"]::-webkit-inner-spin-button{ display:none }
         input[type="time"]:focus{ box-shadow: var(--focus); border-color: rgba(124,92,255,.6) }
 
-        .quick{ display:flex; gap:8px; flex-wrap:wrap }
+        .quick{ display:flex; gap:8px; flex-wrap:wrap; }
         .btn{
             background:transparent; color:var(--text);
             border:1px solid lightgray; border-radius:12px;
@@ -185,14 +176,6 @@
     <section class="ring-wrap" aria-label="Круговой индикатор рабочего дня">
         <div class="ring" id="ring"></div>
 
-        <div class="quarter-dot qd25" aria-hidden="true"></div>
-        <div class="quarter-dot qd50" aria-hidden="true"></div>
-        <div class="quarter-dot qd75" aria-hidden="true"></div>
-        <div class="quarter-label ql25" aria-hidden="true">¼</div>
-        <div class="quarter-label ql50" aria-hidden="true">½</div>
-        <div class="quarter-label ql75" aria-hidden="true">¾</div>
-
-        <div class="time-dot" id="pin" aria-hidden="true"></div>
         <div class="center-badge" aria-live="polite" aria-atomic="true">
             <div class="now" id="now">--:--</div>
             <div class="range" id="range">--:-- – --:--</div>
@@ -213,10 +196,12 @@
                 <input id="endTime" type="time" step="60" value="18:00" title="Введите время в формате чч:мм, например 18:00" aria-describedby="hint-end" />
                 <small id="hint-end" class="hint">Можно нажать «+8 часов смена» — конец рассчитается автоматически.</small>
             </div>
+
+        </div>
+
+        <div class="controls" role="group" aria-label="Точная настройка">
             <div class="quick" style="grid-column:1/-1">
                 <button class="btn" id="btnNow">Сейчас пришёл</button>
-                <button class="btn" id="btn8h">+8 часов смена</button>
-                <button class="btn" id="btnStore">Сохранить (LocalStorage)</button>
                 <button class="btn" id="btnReset">Сбросить</button>
             </div>
         </div>
@@ -249,7 +234,6 @@
 
 <script>
     const ring = document.getElementById('ring');
-    const pin = document.getElementById('pin');
     const nowEl = document.getElementById('now');
     const rangeEl = document.getElementById('range');
     const elapsedEl = document.getElementById('elapsed');
@@ -263,15 +247,12 @@
     const startInput = document.getElementById('startTime');
     const endInput   = document.getElementById('endTime');
     const btnNow   = document.getElementById('btnNow');
-    const btn8h    = document.getElementById('btn8h');
-    const btnStore = document.getElementById('btnStore');
     const btnReset = document.getElementById('btnReset');
 
     const fmtHM = new Intl.DateTimeFormat(undefined,{hour:'2-digit', minute:'2-digit'});
 
     function pad(n){return String(n).padStart(2,'0')}
     function clamp(n, min, max){ return Math.min(max, Math.max(min, n)) }
-    function minutes(h, m){ return h*60 + m }
     function parseTime(value){
         const [h,m] = (value||'00:00').split(":").map(Number);
         return {h: (h||0), m: (m||0)};
@@ -306,7 +287,7 @@
         const raw = (nowClamped - start) / (end - start);
         const p = clamp(raw, 0, 1);
 
-        let elapsedMin = 0, leftMin = totalMin;
+        let elapsedMin, leftMin;
         if(nowClamped <= start){ elapsedMin = 0; leftMin = totalMin; }
         else if(nowClamped >= end){ elapsedMin = totalMin; leftMin = 0; }
         else { elapsedMin = Math.floor((nowClamped - start)/60000); leftMin = Math.ceil((end - nowClamped)/60000); }
@@ -319,12 +300,10 @@
         const startHM = parseTime(startInput.value || '10:00');
         const endHM   = parseTime(endInput.value   || '18:00');
 
-        const {p, elapsedMin, leftMin, totalMin, start, end} = computeProgress(now, startHM, endHM);
+        const {p, elapsedMin, leftMin, start, end} = computeProgress(now, startHM, endHM);
 
-        const angle = p * 360;
-        ring.style.background = `conic-gradient(var(--accent) ${angle}deg, var(--track) 0deg)`;
-        const pinAngle = p * 360 - 90;
-        pin.style.transform = `translate(-50%,-50%) rotate(${pinAngle}deg) translateY(calc(-50% + (var(--ring-size) / 2)))`;
+        const angle = Math.round(p * 360);
+        ring.style.setProperty("--p", `${angle}deg`);
 
         nowEl.textContent = fmtHM.format(now);
         rangeEl.textContent = `${toStr({h:start.getHours(), m:start.getMinutes()})} – ${toStr({h:end.getHours(), m:end.getMinutes()})}`;
@@ -350,30 +329,29 @@
     }
 
     function wire(){
-        const recompute = () => update();
+        const recompute = () => {
+            saveCurrent();
+            update();
+        }
+
         startInput.addEventListener('change', recompute);
         endInput.addEventListener('change', recompute);
 
         btnNow.addEventListener('click', () => {
             const n = new Date();
             startInput.value = `${pad(n.getHours())}:${pad(n.getMinutes())}`;
-            update();
-        });
 
-        btn8h.addEventListener('click', () => {
             const s = parseTime(startInput.value||'10:00');
             const endMinutes = (s.h*60 + s.m + 8*60) % (24*60);
             const eh = Math.floor(endMinutes/60), em = endMinutes%60;
             endInput.value = `${pad(eh)}:${pad(em)}`;
-            update();
+            recompute();
         });
 
-        btnStore.addEventListener('click', () => { saveCurrent(); update(); });
         btnReset.addEventListener('click', () => {
             startInput.value = '10:00';
             endInput.value   = '18:00';
-            saveCurrent();
-            update();
+            recompute();
         });
     }
 
