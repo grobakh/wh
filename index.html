@@ -188,19 +188,13 @@
 
         <div class="controls" role="group" aria-label="Настройки времени">
             <div class="field">
-                <label for="startTime">Пришёл <span class="hint">(формат: чч:мм, напр. 08:15)</span></label>
+                <label for="startTime">Пришёл</label>
                 <input id="startTime" type="time" step="60" value="10:00" title="Введите время в формате чч:мм, например 08:15" aria-describedby="hint-start" />
-                <small id="hint-start" class="hint">24‑часовой формат. Быстрый ввод: нажми «Сейчас пришёл».</small>
             </div>
             <div class="field">
-                <label for="endTime">Уйду <span class="hint">(формат: чч:мм, напр. 18:00)</span></label>
+                <label for="endTime">Уйду</label>
                 <input id="endTime" type="time" step="60" value="18:00" title="Введите время в формате чч:мм, например 18:00" aria-describedby="hint-end" />
-                <small id="hint-end" class="hint">Можно нажать «+8 часов смена» — конец рассчитается автоматически.</small>
             </div>
-
-        </div>
-
-        <div class="controls" role="group" aria-label="Точная настройка">
             <div class="quick" style="grid-column:1/-1">
                 <button class="btn" id="btnNow">Сейчас пришёл</button>
                 <button class="btn" id="btnReset">Сбросить</button>
