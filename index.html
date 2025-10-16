@@ -109,8 +109,15 @@
 
         .title{ font-size: clamp(1.2rem, 1.4rem + .4vw, 1.8rem); font-weight: 800; letter-spacing: .2px; }
 
-        .controls{ display:grid; gap:24px 12px; grid-template-columns: 1fr 1fr; align-items:start }
-        .field{ display:grid; gap:6px; grid-row-template: subgrid; }
+        .controls{ display:grid; gap:10px; grid-template-columns: 1fr 1fr; align-items:start }
+
+        @supports (grid-template-rows: subgrid) {
+            .controls{ grid-template-rows: auto auto auto; }
+            .field{ display:grid; grid-template-rows: subgrid; grid-row: span 3; }
+            .quick{ grid-column:1 / -1; grid-row: 4; }
+        }
+        .field{ display:grid; gap:6px; align-content:start }
+
         label{ font-size:.86rem; color:var(--muted) }
         .hint{ font-size:.78rem; color:var(--muted); opacity:.9 }
         .field small.hint{ margin-top:-2px }
