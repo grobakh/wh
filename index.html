@@ -164,12 +164,15 @@
         .kpi .label{ color:var(--muted); font-size:.85rem }
         .kpi .value{ font-weight:700; font-size:1.2rem }
 
-        .badges{ display:flex; flex-wrap:wrap; gap:8px }
-        .badge{ border-radius: 999px; padding:6px 10px; font-size:.82rem; border:1px solid lightgray; color: var(--muted); background:transparent; }
-        .badge.active{ color: var(--accent-2); border-color: var(--accent-2); background: color-mix(in oklab, var(--accent-2) 14%, transparent); }
+        .badges{ display:flex; flex-wrap:wrap; gap:12px }
+        .badge{ border-radius: 12px; background-color: var(--track); padding:6px 10px; font-size:.82rem; color: var(--muted);  }
+        .badge.active{ color: var(--accent-2); border: none; background: color-mix(in oklab, var(--accent-2) 14%, transparent); }
+        .badge::before{ content:"⌛"; width:10px; height:10px; margin-right: 8px;  }
+        .badge.active::before{ content:"✅"; width:10px; height:10px; margin-right: 8px;  }
 
         .legend{ color:var(--muted); font-size:.9rem; display: flex; flex-wrap: wrap;align-items: center; gap: 24px }
-        .legend i{ display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px }
+        .legend>span { display: flex; align-items: center; }
+        .legend i{ display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; vertical-align:-1px }
         .leg-elapsed i{ background: var(--accent) }
         .leg-remaining i{ background: var(--track) }
         .leg-pin i{ background: var(--accent-2) }
