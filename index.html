@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Круговой прогресс рабочего дня</title>
+    <style>
+        :root{
+            --bg: #0b0c10;
+            --card: #151821;
+            --text: #e8edf2;
+            --muted: #9aa6b2;
+            --accent: #7c5cff;
+            --accent-2: #00d1b2;
+            --track: #232838;
+            --ring-size: 18px;
+            --ring-diam: min(72vmin, 420px);
+            --focus: 0 0 0 4px rgba(124,92,255,.25);
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root{
+                --bg: #f6f8fb;
+                --card: #ffffff;
+                --text: #16181d;
+                --muted: #53606b;
+                --accent: #6450ff;
+                --accent-2: #00a389;
+                --track: #e5e9f0;
+            }
+        }
+
+        *{box-sizing:border-box}
+        html,body{height:100%}
+        body{
+            margin:0; display:grid; place-items:center; gap:24px;
+            background: radial-gradient(1200px 1200px at 10% 10%, rgba(124,92,255,.15), transparent),
+            radial-gradient(1200px 1200px at 90% 90%, rgba(0,209,178,.14), transparent),
+            var(--bg);
+            color:var(--text);
+            font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            padding:24px;
+        }
+
+        .card{
+            width:min(92vw, 980px);
+            background:var(--card);
+            border-radius:24px;
+            box-shadow:
+                    0 10px 30px rgba(0,0,0,.25),
+                    inset 0 1px 0 rgba(255,255,255,.04);
+            padding: clamp(16px, 4vw, 28px);
+            display:grid; grid-template-columns: 1fr minmax(280px, 420px);
+            gap: clamp(16px, 4vw, 32px);
+            align-items:center;
+        }
+
+        @media (max-width: 920px){
+            .card{grid-template-columns: 1fr}
+            .ring-wrap{margin-inline:auto}
+        }
+
+        .ring-wrap{ position:relative; width:var(--ring-diam); height:var(--ring-diam); }
+
+        .ring{
+            --p: 0deg;
+            position:relative; width:100%; height:100%; border-radius:50%;
+            background:
+                    conic-gradient(var(--accent) var(--p), var(--track) 0deg);
+            mask: radial-gradient(calc(50% - var(--ring-size)) circle, transparent 99%, #000 100%);
+            transition: background .35s cubic-bezier(.22,1,.36,1);
+        }
+
+        .ring::after{
+            content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+            background:
+                    repeating-conic-gradient(from -90deg,
+                    rgba(255,255,255,.14) 0 1deg,
+                    transparent 1deg 7.5deg
+                    );
+            radial-gradient(50% circle, #000 98%, transparent 100%);
+            opacity:.35;
+        }
+
+        .quarter-dot{ position:absolute; left:50%; top:50%; width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.9); transform-origin: 50% calc(100% - 6px); box-shadow:0 0 0 2px rgba(0,0,0,.25); }
+        .qd25{ transform: translate(-50%,-50%) rotate(0deg) translateY(calc(-50% + 6px)); }
+        .qd50{ transform: translate(-50%,-50%) rotate(90deg) translateY(calc(-50% + 6px)); }
+        .qd75{ transform: translate(-50%,-50%) rotate(180deg) translateY(calc(-50% + 6px)); }
+        .quarter-label{ position:absolute; left:50%; top:50%; transform-origin:center; color:var(--muted); font-weight:700; font-size:.8rem }
+        .ql25{ transform: translate(-50%,-50%) rotate(0deg) translateY(calc(-50% - 18px)); }
+        .ql50{ transform: translate(-50%,-50%) rotate(90deg) translateY(calc(-50% - 18px)); }
+        .ql75{ transform: translate(-50%,-50%) rotate(180deg) translateY(calc(-50% - 18px)); }
+
+        .time-dot{ position:absolute; left:50%; top:50%; width:12px; height:12px; border-radius:50%; background:var(--accent-2); box-shadow:0 0 0 3px color-mix(in oklab, var(--accent-2) 30%, transparent), 0 2px 8px rgba(0,0,0,.45); transform-origin: 50% calc(100% - 6px); }
+
+        .center-badge{
+            position:absolute; inset: calc(50% - 54px) auto auto calc(50% - 54px);
+            width:108px; height:108px; border-radius:50%;
+            display:grid; place-items:center; text-align:center;
+            background: radial-gradient(60px 60px at 30% 30%, rgba(255,255,255,.06), transparent), var(--card);
+            border: 1px solid rgba(255,255,255,.08);
+            box-shadow: inset 0 2px 8px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.25);
+            padding:10px;
+        }
+        .center-badge .now{ font-weight:700; font-size:1.05rem }
+        .center-badge .range{ font-size:.8rem; color:var(--muted) }
+
+        .info{ display:grid; gap:24px }
+
+        .title{ font-size: clamp(1.2rem, 1.4rem + .4vw, 1.8rem); font-weight: 800; letter-spacing: .2px; }
+
+        .controls{ display:grid; gap:24px 12px; grid-template-columns: 1fr 1fr; align-items:start }
+        .field{ display:grid; gap:6px; grid-row-template: subgrid; }
+        label{ font-size:.86rem; color:var(--muted) }
+        .hint{ font-size:.78rem; color:var(--muted); opacity:.9 }
+        .field small.hint{ margin-top:-2px }
+        input[type="time"]{
+            appearance:none; width:100%;
+            --input-bg: color-mix(in oklab, var(--card) 70%, black);
+            --input-fg: var(--text);
+            background: var(--input-bg);
+            color: var(--input-fg);
+            border:1px solid lightgray;
+            border-radius:12px; padding:10px 12px; font:inherit;
+            box-shadow:none; outline: none;
+            color-scheme: dark;
+            caret-color: var(--accent);
+        }
+        @media (prefers-color-scheme: light){
+            input[type="time"]{ color-scheme: light; --input-bg:#fff; --input-fg:#16181d; border-color:#d6dbe3 }
+        }
+        input[type="time"]:focus{ box-shadow: var(--focus); border-color: rgba(124,92,255,.6) }
+        input[type="time"]:invalid{ border-color:#ff5a5f; box-shadow:0 0 0 3px rgba(255,90,95,.2) }
+
+        input[type="time"]::-webkit-datetime-edit{ padding:0 2px; color: var(--input-fg) }
+        input[type="time"]::-webkit-datetime-edit-fields-wrapper{ background: transparent }
+        input[type="time"]::-webkit-datetime-edit-hour-field,
+        input[type="time"]::-webkit-datetime-edit-minute-field,
+        input[type="time"]::-webkit-datetime-edit-ampm-field,
+        input[type="time"]::-webkit-datetime-edit-text{ color: var(--input-fg) }
+        input[type="time"]::-webkit-calendar-picker-indicator{ opacity:.8 }
+        input[type="time"]::-webkit-clear-button,
+        input[type="time"]::-webkit-inner-spin-button{ display:none }
+        input[type="time"]:focus{ box-shadow: var(--focus); border-color: rgba(124,92,255,.6) }
+
+        .quick{ display:flex; gap:8px; flex-wrap:wrap }
+        .btn{
+            background:transparent; color:var(--text);
+            border:1px solid lightgray; border-radius:12px;
+            padding:8px 12px; font:inherit; cursor:pointer;
+        }
+        .btn:hover{ border-color: rgba(255,255,255,.28) }
+        .btn.primary{ border-color: var(--accent-2); color: var(--accent-2) }
+
+        .kpis{ display:grid; grid-template-columns: 1fr 1fr; gap:14px }
+        .kpi{ background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0)); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding:14px 16px; display:grid; gap:2px; }
+        .kpi .label{ color:var(--muted); font-size:.85rem }
+        .kpi .value{ font-weight:700; font-size:1.2rem }
+
+        .badges{ display:flex; flex-wrap:wrap; gap:8px }
+        .badge{ border-radius: 999px; padding:6px 10px; font-size:.82rem; border:1px solid lightgray; color: var(--muted); background:transparent; }
+        .badge.active{ color: var(--accent-2); border-color: var(--accent-2); background: color-mix(in oklab, var(--accent-2) 14%, transparent); }
+
+        .legend{ color:var(--muted); font-size:.9rem; display: flex; flex-wrap: wrap;align-items: center; gap: 24px }
+        .legend i{ display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px }
+        .leg-elapsed i{ background: var(--accent) }
+        .leg-remaining i{ background: var(--track) }
+        .leg-pin i{ background: var(--accent-2) }
+
+        .foot{ color:var(--muted); font-size:.8rem }
+    </style>
+</head>
+<body>
+<main class="card" role="main">
+    <section class="ring-wrap" aria-label="Круговой индикатор рабочего дня">
+        <div class="ring" id="ring"></div>
+
+        <div class="quarter-dot qd25" aria-hidden="true"></div>
+        <div class="quarter-dot qd50" aria-hidden="true"></div>
+        <div class="quarter-dot qd75" aria-hidden="true"></div>
+        <div class="quarter-label ql25" aria-hidden="true">¼</div>
+        <div class="quarter-label ql50" aria-hidden="true">½</div>
+        <div class="quarter-label ql75" aria-hidden="true">¾</div>
+
+        <div class="time-dot" id="pin" aria-hidden="true"></div>
+        <div class="center-badge" aria-live="polite" aria-atomic="true">
+            <div class="now" id="now">--:--</div>
+            <div class="range" id="range">--:-- – --:--</div>
+        </div>
+    </section>
+
+    <section class="info">
+        <div class="title">Рабочий день: <span id="title-range">10:00 → 18:00</span></div>
+
+        <div class="controls" role="group" aria-label="Настройки времени">
+            <div class="field">
+                <label for="startTime">Пришёл <span class="hint">(формат: чч:мм, напр. 08:15)</span></label>
+                <input id="startTime" type="time" step="60" value="10:00" title="Введите время в формате чч:мм, например 08:15" aria-describedby="hint-start" />
+                <small id="hint-start" class="hint">24‑часовой формат. Быстрый ввод: нажми «Сейчас пришёл».</small>
+            </div>
+            <div class="field">
+                <label for="endTime">Уйду <span class="hint">(формат: чч:мм, напр. 18:00)</span></label>
+                <input id="endTime" type="time" step="60" value="18:00" title="Введите время в формате чч:мм, например 18:00" aria-describedby="hint-end" />
+                <small id="hint-end" class="hint">Можно нажать «+8 часов смена» — конец рассчитается автоматически.</small>
+            </div>
+            <div class="quick" style="grid-column:1/-1">
+                <button class="btn" id="btnNow">Сейчас пришёл</button>
+                <button class="btn" id="btn8h">+8 часов смена</button>
+                <button class="btn" id="btnStore">Сохранить (LocalStorage)</button>
+                <button class="btn" id="btnReset">Сбросить</button>
+            </div>
+        </div>
+
+        <div class="kpis">
+            <div class="kpi">
+                <div class="label">Прошло</div>
+                <div class="value" id="elapsed">—</div>
+            </div>
+            <div class="kpi">
+                <div class="label">Осталось</div>
+                <div class="value" id="left">—</div>
+            </div>
+        </div>
+
+        <div class="badges" aria-label="Вехи прогресса">
+            <span class="badge" id="b25">¼ пройдена</span>
+            <span class="badge" id="b50">½ пройдена</span>
+            <span class="badge" id="b75">¾ пройдена</span>
+        </div>
+
+        <div class="legend">
+            <span class="leg-elapsed"><i></i>Пройдено</span>
+            <span class="leg-remaining"><i></i>Осталось</span>
+        </div>
+
+        <div class="foot">Часовой пояс браузера: <span id="tz"></span>. Обновление — раз в секунду.</div>
+    </section>
+</main>
+
+<script>
+    const ring = document.getElementById('ring');
+    const pin = document.getElementById('pin');
+    const nowEl = document.getElementById('now');
+    const rangeEl = document.getElementById('range');
+    const elapsedEl = document.getElementById('elapsed');
+    const leftEl = document.getElementById('left');
+    const b25 = document.getElementById('b25');
+    const b50 = document.getElementById('b50');
+    const b75 = document.getElementById('b75');
+    const tzEl = document.getElementById('tz');
+    const titleRange = document.getElementById('title-range');
+
+    const startInput = document.getElementById('startTime');
+    const endInput   = document.getElementById('endTime');
+    const btnNow   = document.getElementById('btnNow');
+    const btn8h    = document.getElementById('btn8h');
+    const btnStore = document.getElementById('btnStore');
+    const btnReset = document.getElementById('btnReset');
+
+    const fmtHM = new Intl.DateTimeFormat(undefined,{hour:'2-digit', minute:'2-digit'});
+
+    function pad(n){return String(n).padStart(2,'0')}
+    function clamp(n, min, max){ return Math.min(max, Math.max(min, n)) }
+    function minutes(h, m){ return h*60 + m }
+    function parseTime(value){
+        const [h,m] = (value||'00:00').split(":").map(Number);
+        return {h: (h||0), m: (m||0)};
+    }
+    function toStr(hm){ return `${pad(hm.h)}:${pad(hm.m)}` }
+
+    function loadSaved(){
+        try{
+            const s = localStorage.getItem('workDial');
+            if(!s) return;
+            const {start,end} = JSON.parse(s);
+            if(start) startInput.value = start;
+            if(end)   endInput.value   = end;
+        }catch{}
+    }
+
+    function saveCurrent(){
+        try{
+            localStorage.setItem('workDial', JSON.stringify({start:startInput.value, end:endInput.value}));
+        }catch{}
+    }
+
+    function computeProgress(now, startHM, endHM){
+        const day = new Date(now);
+        const start = new Date(day); start.setHours(startHM.h, startHM.m, 0, 0);
+        const end   = new Date(day); end.setHours(endHM.h, endHM.m, 0, 0);
+
+        if(end <= start){ end.setDate(end.getDate()+1); }
+
+        const totalMin = Math.round((end - start)/60000);
+        const nowClamped = new Date(now);
+        const raw = (nowClamped - start) / (end - start);
+        const p = clamp(raw, 0, 1);
+
+        let elapsedMin = 0, leftMin = totalMin;
+        if(nowClamped <= start){ elapsedMin = 0; leftMin = totalMin; }
+        else if(nowClamped >= end){ elapsedMin = totalMin; leftMin = 0; }
+        else { elapsedMin = Math.floor((nowClamped - start)/60000); leftMin = Math.ceil((end - nowClamped)/60000); }
+
+        return {p, elapsedMin, leftMin, totalMin, start, end};
+    }
+
+    function update(){
+        const now = new Date();
+        const startHM = parseTime(startInput.value || '10:00');
+        const endHM   = parseTime(endInput.value   || '18:00');
+
+        const {p, elapsedMin, leftMin, totalMin, start, end} = computeProgress(now, startHM, endHM);
+
+        const angle = p * 360;
+        ring.style.background = `conic-gradient(var(--accent) ${angle}deg, var(--track) 0deg)`;
+        const pinAngle = p * 360 - 90;
+        pin.style.transform = `translate(-50%,-50%) rotate(${pinAngle}deg) translateY(calc(-50% + (var(--ring-size) / 2)))`;
+
+        nowEl.textContent = fmtHM.format(now);
+        rangeEl.textContent = `${toStr({h:start.getHours(), m:start.getMinutes()})} – ${toStr({h:end.getHours(), m:end.getMinutes()})}`;
+        titleRange.textContent = `${toStr({h:start.getHours(), m:start.getMinutes()})} → ${toStr({h:end.getHours(), m:end.getMinutes()})}`;
+
+        const eh = Math.floor(elapsedMin/60), em = elapsedMin%60;
+        const lh = Math.floor(leftMin/60), lm = leftMin%60;
+        const finished = leftMin === 0;
+        const before = elapsedMin === 0 && p === 0;
+        elapsedEl.textContent = finished ? `${eh} ч ${em} мин (смена завершена)` : `${eh} ч ${em} мин`;
+        leftEl.textContent = before ? `ещё ${lh} ч ${lm} мин до старта` : `${lh} ч ${lm} мин`;
+
+        b25.classList.toggle('active', p >= 0.25);
+        b50.classList.toggle('active', p >= 0.50);
+        b75.classList.toggle('active', p >= 0.75);
+
+        ring.setAttribute('aria-label', `Прогресс ${Math.round(p*100)}%`);
+    }
+
+    function initTZ(){
+        try{ tzEl.textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || 'локальный'; }
+        catch{ tzEl.textContent = 'локальный' }
+    }
+
+    function wire(){
+        const recompute = () => update();
+        startInput.addEventListener('change', recompute);
+        endInput.addEventListener('change', recompute);
+
+        btnNow.addEventListener('click', () => {
+            const n = new Date();
+            startInput.value = `${pad(n.getHours())}:${pad(n.getMinutes())}`;
+            update();
+        });
+
+        btn8h.addEventListener('click', () => {
+            const s = parseTime(startInput.value||'10:00');
+            const endMinutes = (s.h*60 + s.m + 8*60) % (24*60);
+            const eh = Math.floor(endMinutes/60), em = endMinutes%60;
+            endInput.value = `${pad(eh)}:${pad(em)}`;
+            update();
+        });
+
+        btnStore.addEventListener('click', () => { saveCurrent(); update(); });
+        btnReset.addEventListener('click', () => {
+            startInput.value = '10:00';
+            endInput.value   = '18:00';
+            saveCurrent();
+            update();
+        });
+    }
+
+    initTZ();
+    loadSaved();
+    wire();
+    update();
+    setInterval(update, 1000);
+</script>
+</body>
+</html>
