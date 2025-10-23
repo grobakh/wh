@@ -18,6 +18,11 @@
             --ring-size: 18px;
             --ring-diam: min(72vmin, 420px);
             --focus: 0 0 0 4px rgba(124,92,255,.25);
+            --p: 0;
+            --minor-line: 11.25deg;
+            --minor-line-shift: 0;
+            --major-line: 45deg;
+            --major-line-shift: 0;
         }
 
         @media (prefers-color-scheme: light) {
@@ -75,13 +80,15 @@
         .ring::after{
             content:""; position:absolute; inset:0; border-radius:50%; pointer-events:none;
             background:
-                repeating-conic-gradient(from -90deg,
+                repeating-conic-gradient(
+                from var(--major-line-shift, 0),
                 rgba(255,255,255,.5) 0 1deg,
-                transparent 1deg 45deg
+                transparent 1deg var(--major-line, 45deg)
                 ),
-                repeating-conic-gradient(from -90deg,
+                repeating-conic-gradient(
+                from var(--manor-line-shift, 0),
                 rgba(255,255,255,.12) 0 1deg,
-                transparent 1deg 11.25deg
+                transparent 1deg var(--minor-line, 11.25deg)
                 );
             opacity:.35;
         }
@@ -212,7 +219,7 @@
                 <div class="value" id="left">—</div>
             </div>
         </div>
-К
+
         <div class="badges" aria-label="Вехи прогресса">
             <span class="badge" id="b25">¼ пройдена</span>
             <span class="badge" id="b50">½ пройдена</span>
@@ -291,15 +298,37 @@
         return {p, elapsedMin, leftMin, totalMin, start, end};
     }
 
+    function computeTicks(timeStart, totalMin, tickMinutes) {
+        const m0 = timeStart.getMinutes();
+        const dpm = 360 / (totalMin || 1);
+
+        // смещение до ближайшего СЛЕДУЮЩЕГО кратного tickMinutes момента
+        // (если старт уже кратен — будет 0)
+        const offsetMin = ((tickMinutes - (m0 % tickMinutes)) % tickMinutes);
+
+        const stepDeg = tickMinutes * dpm;
+        const offsetDeg = (offsetMin * dpm) % 360;
+
+        return { stepDeg, offsetMin, offsetDeg };
+    }
+
     function update(){
         const now = new Date();
         const startHM = parseTime(startInput.value || '10:00');
         const endHM   = parseTime(endInput.value   || '18:00');
 
-        const {p, elapsedMin, leftMin, start, end} = computeProgress(now, startHM, endHM);
+        const {p, elapsedMin, leftMin, start, end, totalMin} = computeProgress(now, startHM, endHM);
 
         const angle = Math.round(p * 360);
         ring.style.setProperty("--p", `${angle}deg`);
+
+        const hours = computeTicks(start, totalMin, 60);
+        const quarter = computeTicks(start, totalMin, 15);
+
+        ring.style.setProperty("--major-line-shift", `${hours.offsetDeg}deg`);
+        ring.style.setProperty("--major-line", `${hours.stepDeg}deg`);
+        ring.style.setProperty("--minor-line-shift", `${quarter.offsetDeg}deg`);
+        ring.style.setProperty("--minor-line", `${quarter.stepDeg}deg`);
 
         nowEl.textContent = fmtHM.format(now);
         rangeEl.textContent = `${toStr({h:start.getHours(), m:start.getMinutes()})} – ${toStr({h:end.getHours(), m:end.getMinutes()})}`;
